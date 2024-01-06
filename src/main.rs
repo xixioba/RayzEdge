@@ -4,7 +4,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Result, Value};
+use serde_json::{json, Result, Value};
 
 use rayz_edge::*;
 use std::{
@@ -26,7 +26,7 @@ async fn main() {
         .route("/sdk/pause", get({}))
         .route("/info", get({}))
         .route("/net/set", get({}))
-        .route("/net/get", get({}));
+        .route("/net/get", get(net_get));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:2370").await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -69,4 +69,9 @@ async fn start_sdk(payload: String) {
 async fn stop_sdk() -> &'static str {
     println!("stop sdk");
     "stop sdk"
+}
+
+async fn net_get(payload: String) -> Json<Value> {
+    println!("net get {:?}", payload);
+    Json(json!({"net": "get"}))
 }

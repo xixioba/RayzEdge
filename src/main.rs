@@ -20,8 +20,8 @@ fn main() {
         .build()
         .unwrap();
 
-    let (tx, _) = tokio::sync::broadcast::channel::<()>(1);
+    let (tx, rx) = tokio::sync::broadcast::channel::<()>(1);
 
-    rt.spawn(handle_ctrl_c_signal(tx.clone()));
-    rt.block_on(start_web_server(tx.clone()," ".to_owned()));
+    rt.spawn(handle_ctrl_c_signal(tx));
+    rt.block_on(start_web_server(rx, " ".to_owned()));
 }

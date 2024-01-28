@@ -223,10 +223,19 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
     let mut app_process = APP_PROCESS.lock().await;
     if app_process.is_none() {
         println!("start {:?} with args:{:?}", app_path, args);
-        let child = tokio::process::Command::new(app_path)
-            .args(args)
-            .stdout(Stdio::inherit())
-            .spawn();
+        let child;
+        if std::env::consts::OS == "windows" {
+            child = tokio::process::Command::new(app_path)
+                .args(args)
+                .creation_flags(0x08000000) // hide terminal for windows
+                .stdout(Stdio::inherit())
+                .spawn();
+        } else {
+            child = tokio::process::Command::new(app_path)
+                .args(args)
+                .stdout(Stdio::inherit())
+                .spawn();
+        }
 
         match child {
             Ok(child) => {

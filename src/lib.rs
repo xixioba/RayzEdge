@@ -50,6 +50,11 @@ fn pick_cli_params(params: HashMap<String, Value>) -> Vec<String> {
                 args.push("-i".to_owned());
                 args.push(val.as_str().unwrap().to_owned());
             }
+            "recordPath" => {
+                args.push("--record".to_owned());
+                args.push(val.as_str().unwrap().to_owned());
+                // args.push("--raw".to_owned());
+            }
             _ => {}
         }
     }
@@ -254,7 +259,11 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
     return false;
 }
 
-pub async fn start_web_server(mut stop_rx: tokio::sync::broadcast::Receiver<()>, app_path: String) {
+pub async fn start_web_server(
+    mut stop_rx: tokio::sync::broadcast::Receiver<()>,
+    app_path: String,
+    util_path: String,
+) {
     println!("start http server!");
 
     // let mut app_base = APP_BASE.lock().await;
@@ -272,6 +281,7 @@ pub async fn start_web_server(mut stop_rx: tokio::sync::broadcast::Receiver<()>,
 
     let app: Router = Router::new()
         .route("/connect", post(handle_connect_post))
+        .route("/record", post(handle_connect_post))
         .route("/replay", post(handle_replay_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),

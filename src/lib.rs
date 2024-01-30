@@ -9,11 +9,13 @@ use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 use std::{collections::HashMap, process::Stdio};
 
-use tokio::sync::Mutex;
+use regex::Regex;
+use tokio::{io::AsyncBufReadExt, sync::Mutex};
 use tower_http::cors::CorsLayer;
 
 // 全局静态变量，存储应用程序子进程状态
 static APP_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
+static UTIL_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
 
 #[derive(Debug)]
 struct AppBase {
@@ -29,9 +31,42 @@ static APP_BASE: Lazy<Mutex<Option<AppBase>>> =
 #[derive(Debug, Copy, Clone)]
 struct AppState {
     app_path: &'static str,
+    util_path: &'static str,
 }
 
-fn pick_cli_params(params: HashMap<String, Value>) -> Vec<String> {
+fn pick_util_cli_params(params: HashMap<String, Value>, action: String) -> Vec<String> {
+    let mut args = Vec::new();
+    if params.contains_key("ipv4") {
+        if params["ipv4"].as_str().unwrap() == "" {
+            args.push("192.168.0.2".to_string());
+        } else {
+            args.push(params["ipv4"].as_str().unwrap().to_owned());
+        }
+        args.push(action);
+        args.push("all".to_owned());
+    }
+    args
+}
+
+async fn handle_control_post(
+    State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    json: Option<Json<HashMap<String, Value>>>,
+) -> Json<Value> {
+    let mut args = Vec::new();
+    if let Some(query) = query {
+        if query["action"] == "get" {
+            if let Some(json) = json {
+                args = pick_util_cli_params(json.0, "get".to_string());
+            }
+            return do_start_lidar_util(args, state.util_path.to_string()).await;
+        } else if query["action"] == "set" {
+        }
+    }
+    Json(json!({"status": "ok"}))
+}
+
+fn pick_app_cli_params(params: HashMap<String, Value>) -> Vec<String> {
     let mut args = Vec::new();
     for (key, val) in params.iter() {
         match key.as_str() {
@@ -69,7 +104,7 @@ async fn handle_connect_post(
     println!("handle_connect_post {:?}", state.app_path);
     let mut args: Vec<String> = Vec::new();
     if let Some(json) = json {
-        args = pick_cli_params(json.0);
+        args = pick_app_cli_params(json.0);
     }
     if let Some(query) = query {
         if query["action"] == "stop" {
@@ -89,7 +124,7 @@ async fn handle_replay_post(
 ) -> Json<Value> {
     let mut args = Vec::new();
     if let Some(json) = json {
-        args = pick_cli_params(json.0);
+        args = pick_app_cli_params(json.0);
     }
     if let Some(query) = query {
         if query["action"] == "stop" {
@@ -98,14 +133,6 @@ async fn handle_replay_post(
             do_start_lidar_app(args, state.app_path.to_string()).await;
         }
     }
-    // 测试用例
-    // if do_check_lidar_app().await == false {
-    //     println!("lidar app process not exist, start it!");
-    //     do_start_lidar_app(args).await;
-    // } else {
-    //     println!("lidar app process exist,stop it!");
-    //     do_stop_lidar_app().await;
-    // }
     Json(json!({"status": "ok"}))
 }
 
@@ -172,13 +199,11 @@ async fn do_stop_lidar_app() -> bool {
 }
 
 async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
-    println!("do_start_lidar_app 1!");
     // 确保清理旧的进程
     if do_check_lidar_app().await == true {
         println!("lidar app process exist,stop first!");
         do_stop_lidar_app().await;
     }
-    println!("do_start_lidar_app! 2");
     // 确保提供lidar model
     if !args.contains(&"--model".to_owned()) {
         args.push("--model".to_owned());
@@ -259,6 +284,59 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
     return false;
 }
 
+async fn do_start_lidar_util(mut args: Vec<String>, util_path: String) -> Json<Value> {
+    let mut json_obj = json!({});
+    let util_process = UTIL_PROCESS.lock().await;
+    if util_process.is_none() {
+        println!("start {:?} with args:{:?}", util_path, args);
+        let child;
+        #[cfg(target_os = "windows")]
+        {
+            child = tokio::process::Command::new(util_path)
+                .args(args)
+                .creation_flags(0x08000000) // hide terminal for windows
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            child = tokio::process::Command::new(util_path)
+                .args(args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
+        }
+
+        if let Ok(mut child) = child {
+            if let Some(stdout) = child.stderr.take() {
+                let mut stderr_reader = tokio::io::BufReader::new(stdout).lines();
+                while let Some(line) = stderr_reader.next_line().await.unwrap() {
+                    let re = Regex::new(
+                        r#"^\[(?P<time>.*) (?P<level>.*)\] - (?P<key>.*): \"?(?P<val>.*?)\"?$"#,
+                    )
+                    .unwrap();
+                    if let Some(caps) = re.captures(&line) {
+                        println!(
+                            "util output: {} {} {} {}",
+                            &caps["time"], &caps["level"], &caps["key"], &caps["val"]
+                        );
+                        json_obj[&caps["key"]] = json!(caps["val"]);
+                    }
+                }
+                println!("json_obj:{:?}", json_obj);
+            }
+            // *util_process = Some(child);
+            child.kill().await.expect("kill failed");
+            match child.wait().await {
+                Ok(status) => println!("child process exited with status {:?}", status),
+                Err(e) => println!("error while waiting for child process: {}", e),
+            }
+        }
+    }
+    return Json(json_obj);
+}
+
 pub async fn start_web_server(
     mut stop_rx: tokio::sync::broadcast::Receiver<()>,
     app_path: String,
@@ -283,8 +361,10 @@ pub async fn start_web_server(
         .route("/connect", post(handle_connect_post))
         .route("/record", post(handle_connect_post))
         .route("/replay", post(handle_replay_post))
+        .route("/control", post(handle_control_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),
+            util_path: Box::leak(util_path.into_boxed_str()),
         })
         .layer(CorsLayer::permissive());
 

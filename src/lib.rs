@@ -79,7 +79,14 @@ fn pick_app_cli_params(params: HashMap<String, Value>) -> Vec<String> {
             },
             "lidarModel" => {
                 args.push("--model".to_owned());
-                args.push(val.as_str().unwrap().to_owned());
+                match val.as_str().unwrap() {
+                    "H260" => args.push("h2a+".to_owned()),
+                    "H260R" => args.push("h2a".to_owned()),
+                    "W100" => args.push("m2w".to_owned()),
+                    "W100P" => args.push("m2w+".to_owned()),
+                    "V80" => args.push("m2v".to_owned()),
+                    _ => args.push(val.as_str().unwrap().to_owned()),
+                }
             }
             "url" => {
                 args.push("-i".to_owned());

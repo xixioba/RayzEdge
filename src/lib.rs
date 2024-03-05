@@ -124,6 +124,29 @@ async fn handle_connect_post(
     Json(json!({"status": "ok"}))
 }
 
+async fn handle_merge_post(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    json: Option<Json<Vec<HashMap<String, Value>>>>,
+) -> Json<Value> {
+    // println!("handle_merge_post {:?}", state.app_path);
+    // let mut args: Vec<String> = Vec::new();
+    if let Some(json) = json {
+        // args = pick_app_cli_params(json.0);
+        println!("args测试{:?}", json.0);
+    } else {
+        println!("json测试为空");
+    }
+    if let Some(query) = query {
+        println!("query测试{:?}", query);
+        // if query["action"] == "saveNew" {
+        //     do_stop_lidar_app().await;
+        // }
+    }
+
+    Json(json!({"status": "ok"}))
+}
+
 async fn handle_replay_post(
     State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
@@ -369,6 +392,7 @@ pub async fn start_web_server(
         .route("/record", post(handle_connect_post))
         .route("/replay", post(handle_replay_post))
         .route("/control", post(handle_control_post))
+        .route("/merge", post(handle_merge_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),
             util_path: Box::leak(util_path.into_boxed_str()),

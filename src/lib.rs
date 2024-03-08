@@ -66,38 +66,44 @@ async fn handle_control_post(
     Json(json!({"status": "ok"}))
 }
 
-fn pick_app_cli_params(params: HashMap<String, Value>) -> Vec<String> {
+fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
     let mut args = Vec::new();
-    for (key, val) in params.iter() {
-        match key.as_str() {
-            "filePath" => match val {
-                Value::String(val) => {
+    for group in params {
+        for (key, val) in group.iter() {
+            match key.as_str() {
+                "filePath" => match val {
+                    Value::String(val) => {
+                        args.push("-i".to_owned());
+                        args.push(val.to_owned())
+                    }
+                    _ => {}
+                },
+                "lidarModel" => {
+                    args.push("--model".to_owned());
+                    match val.as_str().unwrap() {
+                        "H260" => args.push("h2a+".to_owned()),
+                        "H260R" => args.push("h2a".to_owned()),
+                        "W100" => args.push("m2w".to_owned()),
+                        "W100P" => args.push("m2w+".to_owned()),
+                        "V80" => args.push("m2v".to_owned()),
+                        _ => args.push(val.as_str().unwrap().to_owned()),
+                    }
+                }
+                "url" => {
                     args.push("-i".to_owned());
-                    args.push(val.to_owned())
+                    args.push(val.as_str().unwrap().to_owned());
+                }
+                "recordPath" => {
+                    args.push("--record".to_owned());
+                    args.push(val.as_str().unwrap().to_owned());
+                    // args.push("--raw".to_owned());
+                }
+                "uid" => {
+                    args.push("--id".to_owned());
+                    args.push(val.as_str().unwrap().to_owned());
                 }
                 _ => {}
-            },
-            "lidarModel" => {
-                args.push("--model".to_owned());
-                match val.as_str().unwrap() {
-                    "H260" => args.push("h2a+".to_owned()),
-                    "H260R" => args.push("h2a".to_owned()),
-                    "W100" => args.push("m2w".to_owned()),
-                    "W100P" => args.push("m2w+".to_owned()),
-                    "V80" => args.push("m2v".to_owned()),
-                    _ => args.push(val.as_str().unwrap().to_owned()),
-                }
             }
-            "url" => {
-                args.push("-i".to_owned());
-                args.push(val.as_str().unwrap().to_owned());
-            }
-            "recordPath" => {
-                args.push("--record".to_owned());
-                args.push(val.as_str().unwrap().to_owned());
-                // args.push("--raw".to_owned());
-            }
-            _ => {}
         }
     }
     args
@@ -106,9 +112,8 @@ fn pick_app_cli_params(params: HashMap<String, Value>) -> Vec<String> {
 async fn handle_connect_post(
     State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
-    json: Option<Json<HashMap<String, Value>>>,
+    json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
-    println!("handle_connect_post {:?}", state.app_path);
     let mut args: Vec<String> = Vec::new();
     if let Some(json) = json {
         args = pick_app_cli_params(json.0);
@@ -125,23 +130,20 @@ async fn handle_connect_post(
 }
 
 async fn handle_merge_post(
-    // State(state): State<AppState>,
+    State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
-    // println!("handle_merge_post {:?}", state.app_path);
-    // let mut args: Vec<String> = Vec::new();
+    let mut args: Vec<String> = Vec::new();
     if let Some(json) = json {
-        // args = pick_app_cli_params(json.0);
-        println!("args测试{:?}", json.0);
-    } else {
-        println!("json测试为空");
+        args = pick_app_cli_params(json.0);
     }
     if let Some(query) = query {
-        println!("query测试{:?}", query);
-        // if query["action"] == "saveNew" {
-        //     do_stop_lidar_app().await;
-        // }
+        if query["action"] == "stop" {
+            do_stop_lidar_app().await;
+        } else if query["action"] == "start" {
+            do_start_lidar_app(args, state.app_path.to_string()).await;
+        }
     }
 
     Json(json!({"status": "ok"}))
@@ -150,7 +152,7 @@ async fn handle_merge_post(
 async fn handle_replay_post(
     State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
-    json: Option<Json<HashMap<String, Value>>>,
+    json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
     let mut args = Vec::new();
     if let Some(json) = json {
@@ -257,7 +259,6 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
         args.push("-1".to_owned());
     }
 
-    println!("args:{:?}", args);
     // let mut app_base = APP_BASE.lock().await;
     // if let Some(base) = APP_BASE.lock().await.as_mut() {
     //     if base.app_process_child.is_none() {

@@ -37,10 +37,13 @@ struct AppState {
 fn pick_util_cli_params(params: HashMap<String, Value>, action: String) -> Vec<String> {
     let mut args = Vec::new();
     if params.contains_key("ipv4") {
-        if params["ipv4"].as_str().unwrap() == "" {
-            args.push("192.168.0.2".to_string());
-        } else {
-            args.push(params["ipv4"].as_str().unwrap().to_owned());
+        match params["ipv4"].as_str() {
+            Some(ipv4) => {
+                args.push(ipv4.to_string());
+            }
+            None => {
+                args.push(params["ipv4"].to_string());
+            }
         }
         args.push(action);
         args.push("all".to_owned());
@@ -80,27 +83,37 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
                 },
                 "lidarModel" => {
                     args.push("--model".to_owned());
-                    match val.as_str().unwrap() {
-                        "H260" => args.push("h2a+".to_owned()),
-                        "H260R" => args.push("h2a".to_owned()),
-                        "W100" => args.push("m2w".to_owned()),
-                        "W100P" => args.push("m2w+".to_owned()),
-                        "V80" => args.push("m2v".to_owned()),
-                        _ => args.push(val.as_str().unwrap().to_owned()),
+                    if let Some(val) = val.as_str() {
+                        match val {
+                            "H260" => args.push("h2a+".to_owned()),
+                            "H260R" => args.push("h2a".to_owned()),
+                            "W100" => args.push("m2w".to_owned()),
+                            "W100P" => args.push("m2w+".to_owned()),
+                            "V80" => args.push("m2v".to_owned()),
+                            _ => args.push(val.to_owned()),
+                        }
                     }
                 }
                 "url" => {
                     args.push("-i".to_owned());
-                    args.push(val.as_str().unwrap().to_owned());
+                    if let Some(val) = val.as_str() {
+                        args.push(val.to_owned());
+                    }
                 }
                 "recordPath" => {
                     args.push("--record".to_owned());
-                    args.push(val.as_str().unwrap().to_owned());
+                    if let Some(val) = val.as_str() {
+                        args.push(val.to_owned());
+                    }
                     // args.push("--raw".to_owned());
                 }
                 "uid" => {
                     args.push("--id".to_owned());
-                    args.push(val.as_str().unwrap().to_owned());
+                    match val {
+                        Value::String(val) => args.push(val.to_owned()),
+                        Value::Number(val) => args.push(val.to_string()),
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
@@ -343,16 +356,16 @@ async fn do_start_lidar_util(mut args: Vec<String>, util_path: String) -> Json<V
             if let Some(stdout) = child.stderr.take() {
                 let mut stderr_reader = tokio::io::BufReader::new(stdout).lines();
                 while let Some(line) = stderr_reader.next_line().await.unwrap() {
-                    let re = Regex::new(
+                    if let Ok(re) = Regex::new(
                         r#"^\[(?P<time>.*) (?P<level>.*)\] - (?P<key>.*): \"?(?P<val>.*?)\"?$"#,
-                    )
-                    .unwrap();
-                    if let Some(caps) = re.captures(&line) {
-                        println!(
-                            "util output: {} {} {} {}",
-                            &caps["time"], &caps["level"], &caps["key"], &caps["val"]
-                        );
-                        json_obj[&caps["key"]] = json!(caps["val"]);
+                    ) {
+                        if let Some(caps) = re.captures(&line) {
+                            println!(
+                                "util output: {} {} {} {}",
+                                &caps["time"], &caps["level"], &caps["key"], &caps["val"]
+                            );
+                            json_obj[&caps["key"]] = json!(caps["val"]);
+                        }
                     }
                 }
                 println!("json_obj:{:?}", json_obj);

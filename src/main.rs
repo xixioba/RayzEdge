@@ -23,5 +23,5 @@ fn main() {
     let (tx, rx) = tokio::sync::broadcast::channel::<()>(1);
 
     rt.spawn(handle_ctrl_c_signal(tx));
-    rt.block_on(start_web_server(rx, " ".to_owned()));
+    rt.block_on(start_web_server(rx, " ".to_string()," ".to_string()));
 }

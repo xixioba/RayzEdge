@@ -66,6 +66,53 @@ async fn handle_control_post(
         } else if query["action"] == "set" {
         }
     }
+        Json(json!({"status": "ok"}))
+    }
+
+
+async fn handle_settings_post(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    json: Option<Json<HashMap<String, Value>>>,
+) -> Json<Value> {
+    // let mut args = Vec::new();
+    if let Some(query) = query {
+        if query["action"] == "get" {
+            println!("test...control_get!!!");
+            // if let Some(json) = json {
+            //     args = pick_util_cli_params(json.0, "get".to_string());
+            // }
+            // return do_start_lidar_util(args, state.util_path.to_string()).await;
+            let ip = "192.168.0.2".to_string();
+            let dip = "192.168.0.3".to_string();
+            let dport = "2368".to_string();
+            let bip = "192.168.0.255".to_string();
+            let mask = "255.255.255.0".to_string();
+            let gateway = "192.168.0.1".to_string();
+            let mac = "00:0A:35:00:EB:2A".to_string();
+            let hport = "56789".to_string();
+            return Json(json!({
+                "IP": ip,
+                "DIP": dip,
+                "DPort": dport,
+                "BIP": bip,
+                "Mask": mask,
+                "Gateway": gateway,
+                "MAC": mac,
+                "HPort": hport
+            }));
+        } else if query["action"] == "set" {
+            println!("{:?}", json)
+        } else if query["action"] == "address_get" {
+            println!("address_get...test!!");
+            let address_value = "123007".to_string();
+            return Json(json!({
+                "address_value": address_value
+            }));
+        } else if query["action"] == "address_set" {
+            println!("{:?}", json)
+        }
+    }
     Json(json!({"status": "ok"}))
 }
 
@@ -120,6 +167,54 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
         }
     }
     args
+}
+
+async fn handle_status_get(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    // json: Option<Json<Vec<HashMap<String, Value>>>>,
+) -> Json<Value> {
+    // let args: Vec<String> = Vec::new();
+    // if let Some(json) = json {
+    //     args = pick_app_cli_params(json.0);
+    // }
+    if let Some(query) = query {
+        if query["action"] == "info_get" {
+            let spin_rate = "200pm".to_string();
+            let ptp = "500ns".to_string();
+
+            let customer = "RedLeaf".to_string();
+            let model = "AT128E2X".to_string();
+            let sn = "AT000880BBBG".to_string();
+            let mac = "00:0C:29:8D:3D:3D".to_string();
+            let software = "3.20.20".to_string();
+            let firmware = "2.88a528".to_string();
+            let rpu = "3.20.016".to_string();
+            let golden = "414.0a21".to_string();
+            let hardware = "B1".to_string();
+            let phy = "Slave1".to_string();
+
+            return Json(json!({
+                "spin_rate": spin_rate,
+                "ptp": ptp,
+                "customer": customer,
+                "model": model,
+                "sn": sn,
+                "mac": mac,
+                "software": software,
+                "firmware": firmware,
+                "rpu": rpu,
+                "golden": golden,
+                "hardware": hardware,
+                "phy": phy
+            }));
+        } else {
+            println!("status_get_null!!!");
+        }
+    }
+
+    println!("handle_status_get!!!");
+    Json(json!({"status": "ok"}))
 }
 
 async fn handle_connect_post(
@@ -402,10 +497,12 @@ pub async fn start_web_server(
     // do_check_lidar_app().await;
 
     let app: Router = Router::new()
+        .route("/status", get(handle_status_get))
         .route("/connect", post(handle_connect_post))
         .route("/record", post(handle_connect_post))
         .route("/replay", post(handle_replay_post))
         .route("/control", post(handle_control_post))
+        .route("/settings", post(handle_settings_post))
         .route("/merge", post(handle_merge_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),
@@ -413,7 +510,7 @@ pub async fn start_web_server(
         })
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:15001")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:15002")
         .await
         .unwrap();
 

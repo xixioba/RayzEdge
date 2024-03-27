@@ -13,6 +13,10 @@ use regex::Regex;
 use tokio::{io::AsyncBufReadExt, sync::Mutex};
 use tower_http::cors::CorsLayer;
 
+// log页测试数据用
+use chrono::{DateTime, Duration, Local, TimeZone}; // 导入需要的模块
+use rand::{self, Rng};
+
 // 全局静态变量，存储应用程序子进程状态
 static APP_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
 static UTIL_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
@@ -66,23 +70,17 @@ async fn handle_control_post(
         } else if query["action"] == "set" {
         }
     }
-        Json(json!({"status": "ok"}))
-    }
-
+    Json(json!({"status": "ok"}))
+}
 
 async fn handle_settings_post(
     // State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<HashMap<String, Value>>>,
 ) -> Json<Value> {
-    // let mut args = Vec::new();
     if let Some(query) = query {
         if query["action"] == "get" {
-            println!("test...control_get!!!");
-            // if let Some(json) = json {
-            //     args = pick_util_cli_params(json.0, "get".to_string());
-            // }
-            // return do_start_lidar_util(args, state.util_path.to_string()).await;
+            // println!("test...control_get!!!");
             let ip = "192.168.0.2".to_string();
             let dip = "192.168.0.3".to_string();
             let dport = "2368".to_string();
@@ -113,6 +111,81 @@ async fn handle_settings_post(
             println!("{:?}", json)
         }
     }
+    Json(json!({"status": "ok"}))
+}
+
+// log页测试数据用
+fn random_date(start_date: DateTime<Local>, end_date: DateTime<Local>) -> DateTime<Local> {
+    let delta = end_date.signed_duration_since(start_date);
+    let days: f64 = delta.num_days() as f64 * rand::random::<f64>();
+    start_date + Duration::days(days as i64)
+}
+
+fn generate_mock_data(count: usize) -> Vec<MockData> {
+    let mut data = Vec::new();
+    let types = ["error", "warn", "info"];
+    let start_date = Local.ymd(2020, 1, 1).and_hms(0, 0, 0);
+    let end_date = Local::now();
+    for i in 0..count {
+        let type_index = rand::thread_rng().gen_range(0..types.len());
+        let info_levels = types[type_index];
+        data.push(MockData {
+            index: i + 1,
+            date: random_date(start_date, end_date),
+            info_levels: info_levels.to_string(),
+            content: format!("No. {}, Grove St, Los Angeles", i + 100),
+        });
+    }
+    data
+}
+
+
+use serde::{Serialize, Serializer};
+
+#[derive(Serialize)]
+struct MockData {
+    index: usize,
+    #[serde(serialize_with = "serialize_datetime")]
+    date: DateTime<Local>,
+    info_levels: String,
+    content: String,
+}
+
+// 手动实现 DateTime<Local> 的序列化方法
+fn serialize_datetime<S>(datetime: &DateTime<Local>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    // 使用 chrono 提供的 to_rfc3339 方法将日期时间转换为 RFC3339 格式的字符串
+    let formatted = datetime.to_rfc3339();
+    // 调用 serde 的序列化方法将字符串序列化为 JSON
+    serializer.serialize_str(&formatted)
+}
+
+async fn handle_log_get(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    // json: Option<Json<Vec<HashMap<String, Value>>>>,
+) -> Json<Value> {
+    // let args: Vec<String> = Vec::new();
+    // if let Some(json) = json {
+    //     args = pick_app_cli_params(json.0);
+    // }
+    if let Some(query) = query {
+        if query["action"] == "log_get" {
+            // let table_data = generate_mock_data(101);
+            let mock_data = generate_mock_data(101);
+            let table_data = serde_json::to_string(&mock_data).unwrap();
+
+            // let json_data = serde_json::to_value(table_data).unwrap();
+            return Json(json!(table_data));
+
+        } else {
+            println!("status_get_null!!!");
+        }
+    }
+
+    println!("handle_status_get!!!");
     Json(json!({"status": "ok"}))
 }
 
@@ -503,6 +576,7 @@ pub async fn start_web_server(
         .route("/replay", post(handle_replay_post))
         .route("/control", post(handle_control_post))
         .route("/settings", post(handle_settings_post))
+        .route("/log", get(handle_log_get))
         .route("/merge", post(handle_merge_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),

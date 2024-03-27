@@ -23,7 +23,7 @@ async fn http_serve_static_file(
     println!("stop http file server!");
 }
 
-pub fn start_file_web_server(dir: String, url: String, stop: tokio::sync::oneshot::Receiver<()>) {
+pub fn start_file_web_server(dir: String, url: String, stop: tokio::sync::broadcast::Receiver<()>) {
     thread::spawn(move || {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()

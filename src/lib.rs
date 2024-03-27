@@ -355,6 +355,45 @@ async fn handle_register_post(
     Json(json!({"status": "ok"}))
 }
 
+async fn handle_view_post(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    // json: Option<Json<HashMap<String, Value>>>,
+) -> Json<Value> {
+    if let Some(query) = query {
+        if query["action"] == "lidarInfo_get" {
+            // println!("test...control_get!!!");
+            let spin_rate = "200rmp".to_string();
+            let ptp = "FreeRun/Tracking/Locked/Frozen".to_string();
+            let gps = "Locked/Unlock".to_string();
+            let model = "AT128E2X".to_string();
+            let sn = "AT3ECE52923ECE52".to_string();
+            let mac_address = "EC:9F:1E:CD:1F".to_string();
+            let software_version = "1.0.1.2".to_string();
+            let controller_firmware_version = "1.0.1.2".to_string();
+            let startup_count = "5".to_string();
+            let internal_temperature = "36.63&deg;C".to_string();
+            let total_operation_time = "1h32min".to_string();
+
+            return Json(json!({
+                "spin_rate": spin_rate,
+                "ptp": ptp,
+                "gps": gps,
+                "model": model,
+                "sn": sn,
+                "mac_address": mac_address,
+                "software_version": software_version,
+                "controller_firmware_version": controller_firmware_version,
+                "startup_count": startup_count,
+                "internal_temperature": internal_temperature,
+                "total_operation_time": total_operation_time
+            }));
+        } else if query["action"] == "set" {
+        }
+    }
+    Json(json!({"status": "ok"}))
+}
+
 fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
     let mut args = Vec::new();
     for group in params {
@@ -751,6 +790,7 @@ pub async fn start_web_server(
         .route("/settings", post(handle_settings_post))
         .route("/log", get(handle_log_get))
         .route("/register", post(handle_register_post))
+        .route("/view", post(handle_view_post))
         .route("/merge", post(handle_merge_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),

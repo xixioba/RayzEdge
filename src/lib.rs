@@ -189,6 +189,96 @@ async fn handle_log_get(
     Json(json!({"status": "ok"}))
 }
 
+async fn handle_register_post(
+    // State(state): State<AppState>,
+    query: Option<Query<HashMap<String, String>>>,
+    json: Option<Json<HashMap<String, Value>>>,
+) -> Json<Value> {
+    if let Some(query) = query {
+        if query["action"] == "get" {
+            // println!("test...control_get!!!");
+            let input1 = "0x00000000".to_string();
+            let input2 = "0x00000000".to_string();
+            let input3 = "0x00000000".to_string();
+            let input4 = "0x00000000".to_string();
+            let input5 = "0x00000000".to_string();
+            let input6 = "0x00000000".to_string();
+            let input7 = "0x00000000".to_string();
+            let input8 = "0x00000000".to_string();
+            let input9 = "0x00000000".to_string();
+            let input10 = "0x00000000".to_string();
+            let input11 = "0x00000000".to_string();
+            let input12 = "0x00000000".to_string();
+            let input13 = "0x00000000".to_string();
+            let input14 = "0x00000000".to_string();
+            let input15 = "0x00000000".to_string();
+            let input16 = "0x00000000".to_string();
+            let input17 = "0x00000000".to_string();
+            let input18 = "0x00000000".to_string();
+            let input19 = "0x00000000".to_string();
+            let input20 = "0x00000000".to_string();
+            let input21 = "0x00000000".to_string();
+            let input22 = "0x00000000".to_string();
+            let input23 = "0x00000000".to_string();
+            let input24 = "0x00000000".to_string();
+            let input25 = "0x00000000".to_string();
+            let input26 = "0x00000000".to_string();
+            let input27 = "0x00000000".to_string();
+            let input28 = "0x00000000".to_string();
+            let input29 = "0x00000000".to_string();
+            let input30 = "0x00000000".to_string();
+            let input31 = "0x00000000".to_string();
+            let input32 = "0x00000000".to_string();
+            let input33 = "0x00000000".to_string();
+            let input34 = "0x00000000".to_string();
+            let input35 = "0x00000000".to_string();
+            let input36 = "0x00000000".to_string();
+
+            return Json(json!({
+                "input1": input1,
+                "input2": input2,
+                "input3": input3,
+                "input4": input4,
+                "input5": input5,
+                "input6": input6,
+                "input7": input7,
+                "input8": input8,
+                "input9": input9,
+                "input10": input10,
+                "input11": input11,
+                "input12": input12,
+                "input13": input13,
+                "input14": input14,
+                "input15": input15,
+                "input16": input16,
+                "input17": input17,
+                "input18": input18,
+                "input19": input19,
+                "input20": input20,
+                "input21": input21,
+                "input22": input22,
+                "input23": input23,
+                "input24": input24,
+                "input25": input25,
+                "input26": input26,
+                "input27": input27,
+                "input28": input28,
+                "input29": input29,
+                "input30": input30,
+                "input31": input31,
+                "input32": input32,
+                "input33": input33,
+                "input34": input34,
+                "input35": input35,
+                "input36": input36
+            }));
+        } else if query["action"] == "set" {
+            println!("{:?}", json)
+        }
+    }
+    Json(json!({"status": "ok"}))
+}
+
 fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
     let mut args = Vec::new();
     for group in params {
@@ -577,6 +667,7 @@ pub async fn start_web_server(
         .route("/control", post(handle_control_post))
         .route("/settings", post(handle_settings_post))
         .route("/log", get(handle_log_get))
+        .route("/register", post(handle_register_post))
         .route("/merge", post(handle_merge_post))
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),

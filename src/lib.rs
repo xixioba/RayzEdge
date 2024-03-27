@@ -32,26 +32,95 @@ struct AppBase {
 static APP_BASE: Lazy<Mutex<Option<AppBase>>> =
     Lazy::new(|| tokio::task::block_in_place(|| Mutex::new(None)));
 
+// 用来在不同handler之间传递和共享状态
 #[derive(Debug, Copy, Clone)]
 struct AppState {
     app_path: &'static str,
     util_path: &'static str,
 }
 
-fn pick_util_cli_params(params: HashMap<String, Value>, action: String) -> Vec<String> {
-    let mut args = Vec::new();
-    if params.contains_key("ipv4") {
-        match params["ipv4"].as_str() {
-            Some(ipv4) => {
-                args.push(ipv4.to_string());
-            }
-            None => {
-                args.push(params["ipv4"].to_string());
-            }
-        }
-        args.push(action);
-        args.push("all".to_owned());
+fn val_to_string(val: Option<&Value>) -> String {
+    match val {
+        Some(Value::String(val)) => val.to_owned(),
+        Some(Value::Number(val)) => val.to_string(),
+        _ => "".to_owned(),
     }
+}
+
+fn pick_util_cli_params(
+    params: HashMap<String, Value>,
+    action: String,
+    group: String,
+) -> Vec<String> {
+    let mut args = Vec::new();
+    println!(
+        "pick_util_cli_params with params: {:#?} group: {:?}",
+        params, group
+    );
+    match group.as_str() {
+        "net" => match action.as_str() {
+            "get" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("get".to_owned());
+                args.push("all".to_owned());
+            }
+            "set" => {
+                args.push(val_to_string(params.get("IP_old")));
+                args.push("debug".to_owned());
+                args.push("set".to_owned());
+                args.push("net".to_owned());
+                args.push(val_to_string(params.get("IP")));
+                args.push(val_to_string(params.get("destinationIP")));
+                args.push(val_to_string(params.get("broudcastIP")));
+                args.push(val_to_string(params.get("Gateway")));
+                args.push(val_to_string(params.get("Mask")));
+                args.push(val_to_string(params.get("destinationPort")));
+                args.push(val_to_string(params.get("HeartPort")));
+                args.push(val_to_string(params.get("Mac")));
+            }
+            _ => {}
+        },
+        "reg" => match action.as_str() {
+            "get" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("get".to_owned());
+                args.push("reg".to_owned());
+                args.push(val_to_string(params.get("regAddr")));
+            }
+            "set" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("set".to_owned());
+                args.push("reg".to_owned());
+                args.push(val_to_string(params.get("regAddr")));
+                args.push(val_to_string(params.get("regValue")));
+            }
+            _ => {}
+        },
+        "fps" => match action.as_str() {
+            "get" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("get".to_owned());
+                args.push("fps".to_owned());
+            }
+            "set" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("set".to_owned());
+                args.push("fps".to_owned());
+                args.push(val_to_string(params.get("frameRate")));
+            }
+            _ => {}
+        },
+        "reboot" => {
+            args.push(val_to_string(params.get("ipv4")));
+            args.push("reboot".to_owned());
+        }
+        _ => {}
+    }
+
     args
 }
 
@@ -62,12 +131,21 @@ async fn handle_control_post(
 ) -> Json<Value> {
     let mut args = Vec::new();
     if let Some(query) = query {
+        // net,reg,reboot
+        let group = match query.contains_key("group") {
+            true => query["group"].to_string(),
+            false => "".to_string(),
+        };
         if query["action"] == "get" {
             if let Some(json) = json {
-                args = pick_util_cli_params(json.0, "get".to_string());
+                args = pick_util_cli_params(json.0, "get".to_string(), group);
             }
             return do_start_lidar_util(args, state.util_path.to_string()).await;
         } else if query["action"] == "set" {
+            if let Some(json) = json {
+                args = pick_util_cli_params(json.0, "set".to_string(), group);
+            }
+            return do_start_lidar_util(args, state.util_path.to_string()).await;
         }
     }
     Json(json!({"status": "ok"}))
@@ -139,7 +217,6 @@ fn generate_mock_data(count: usize) -> Vec<MockData> {
     data
 }
 
-
 use serde::{Serialize, Serializer};
 
 #[derive(Serialize)]
@@ -179,7 +256,6 @@ async fn handle_log_get(
 
             // let json_data = serde_json::to_value(table_data).unwrap();
             return Json(json!(table_data));
-
         } else {
             println!("status_get_null!!!");
         }
@@ -347,7 +423,7 @@ async fn handle_status_get(
             let ptp = "500ns".to_string();
 
             let customer = "RedLeaf".to_string();
-            let model = "AT128E2X".to_string();
+            let model = "H260".to_string();
             let sn = "AT000880BBBG".to_string();
             let mac = "00:0C:29:8D:3D:3D".to_string();
             let software = "3.20.20".to_string();
@@ -586,7 +662,12 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
     return false;
 }
 
-async fn do_start_lidar_util(mut args: Vec<String>, util_path: String) -> Json<Value> {
+async fn do_start_lidar_util(args: Vec<String>, util_path: String) -> Json<Value> {
+    // check if args contain "" invalid param
+    if args.len() == 0 || args.contains(&"".to_string()) {
+        println!("invalid param! {:?}", args);
+        return Json(json!({"status": "invalid param","Ret":"Failed"}));
+    }
     let mut json_obj = json!({});
     let util_process = UTIL_PROCESS.lock().await;
     if util_process.is_none() {
@@ -619,14 +700,16 @@ async fn do_start_lidar_util(mut args: Vec<String>, util_path: String) -> Json<V
                     ) {
                         if let Some(caps) = re.captures(&line) {
                             println!(
-                                "util output: {} {} {} {}",
+                                "util filter: {} {} {} {}",
                                 &caps["time"], &caps["level"], &caps["key"], &caps["val"]
                             );
                             json_obj[&caps["key"]] = json!(caps["val"]);
+                        } else {
+                            println!("util output: {}", line);
                         }
                     }
                 }
-                println!("json_obj:{:?}", json_obj);
+                println!("return {:#?}", json_obj);
             }
             // *util_process = Some(child);
             child.kill().await.expect("kill failed");
@@ -675,7 +758,7 @@ pub async fn start_web_server(
         })
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:15002")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:15001")
         .await
         .unwrap();
 

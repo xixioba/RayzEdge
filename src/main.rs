@@ -1,6 +1,6 @@
 use rayz_edge::*;
 use tokio;
-mod file_srever;
+mod file_server;
 
 async fn handle_ctrl_c_signal(tx: tokio::sync::broadcast::Sender<()>) {
     // Handle the ctrl+c signal
@@ -26,7 +26,7 @@ fn main() {
 
     rt.spawn(handle_ctrl_c_signal(tx.clone()));
 
-    file_srever::start_file_web_server(
+    file_server::start_file_web_server(
         "/Users/gxt/Documents/RayzView/dist/".to_string(),
         "0.0.0.0:8080".to_string(),
         rx,

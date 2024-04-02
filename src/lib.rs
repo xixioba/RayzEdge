@@ -71,10 +71,10 @@ fn pick_util_cli_params(
                 args.push("net".to_owned());
                 args.push(val_to_string(params.get("IP")));
                 args.push(val_to_string(params.get("destinationIP")));
+                args.push(val_to_string(params.get("destinationPort")));
                 args.push(val_to_string(params.get("broudcastIP")));
                 args.push(val_to_string(params.get("Gateway")));
                 args.push(val_to_string(params.get("Mask")));
-                args.push(val_to_string(params.get("destinationPort")));
                 args.push(val_to_string(params.get("HeartPort")));
                 args.push(val_to_string(params.get("Mac")));
             }

@@ -535,6 +535,24 @@ async fn handle_merge_post(
     Json(json!({"status": "ok"}))
 }
 
+// async fn handle_replay_post(
+//     State(state): State<AppState>,
+//     query: Option<Query<HashMap<String, String>>>,
+//     json: Option<Json<Vec<HashMap<String, Value>>>>,
+// ) -> Json<Value> {
+//     let mut args = Vec::new();
+//     if let Some(json) = json {
+//         args = pick_app_cli_params(json.0);
+//     }
+//     if let Some(query) = query {
+//         if query["action"] == "stop" {
+//             do_stop_lidar_app().await;
+//         } else if query["action"] == "start" {
+//             do_start_lidar_app(args, state.app_path.to_string()).await;
+//         }
+//     }
+//     Json(json!({"status": "ok"}))
+// }
 async fn handle_replay_post(
     State(state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
@@ -546,9 +564,19 @@ async fn handle_replay_post(
     }
     if let Some(query) = query {
         if query["action"] == "stop" {
+            println!("test...stop请求");
             do_stop_lidar_app().await;
         } else if query["action"] == "start" {
+            println!("test...start请求");
             do_start_lidar_app(args, state.app_path.to_string()).await;
+        } else if query["action"] == "backword" {
+            println!("test...backword请求");
+        } else if query["action"] == "forword" {
+            println!("test...forword请求");
+        } else if query["action"] == "skip" {
+            println!("test...skip请求");
+        } else if query["action"] == "rate" {
+            println!("test...rate请求");
         }
     }
     Json(json!({"status": "ok"}))

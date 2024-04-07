@@ -577,6 +577,8 @@ async fn handle_replay_post(
             println!("test...skip请求");
         } else if query["action"] == "rate" {
             println!("test...rate请求");
+        } else if query["action"] == "autoplay" {
+            println!("test...autoplay请求");
         }
     }
     Json(json!({"status": "ok"}))

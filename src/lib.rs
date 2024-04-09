@@ -7,6 +7,7 @@ use axum::{
 };
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
+use std::sync::Arc;
 use std::{collections::HashMap, process::Stdio};
 
 use regex::Regex;
@@ -128,12 +129,13 @@ fn pick_util_cli_params(
 }
 
 async fn handle_control_post(
-    State(state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<HashMap<String, Value>>>,
 ) -> Json<Value> {
     let mut args = Vec::new();
     if let Some(query) = query {
+        let state = state.lock().await;
         // net,reg,reboot
         let group = match query.contains_key("group") {
             true => query["group"].to_string(),
@@ -155,7 +157,7 @@ async fn handle_control_post(
 }
 
 async fn handle_settings_post(
-    // State(state): State<AppState>,
+    // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<HashMap<String, Value>>>,
 ) -> Json<Value> {
@@ -243,7 +245,7 @@ where
 }
 
 async fn handle_log_get(
-    // State(state): State<AppState>,
+    // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     // json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
@@ -269,7 +271,7 @@ async fn handle_log_get(
 }
 
 async fn handle_register_post(
-    // State(state): State<AppState>,
+    // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<HashMap<String, Value>>>,
 ) -> Json<Value> {
@@ -359,7 +361,7 @@ async fn handle_register_post(
 }
 
 async fn handle_view_post(
-    // State(state): State<AppState>,
+    // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     // json: Option<Json<HashMap<String, Value>>>,
 ) -> Json<Value> {
@@ -451,7 +453,7 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
 }
 
 async fn handle_status_get(
-    // State(state): State<AppState>,
+    // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     // json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
@@ -499,7 +501,7 @@ async fn handle_status_get(
 }
 
 async fn handle_connect_post(
-    State(state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
@@ -508,6 +510,7 @@ async fn handle_connect_post(
         args = pick_app_cli_params(json.0);
     }
     if let Some(query) = query {
+        let state = state.lock().await;
         if query["action"] == "stop" {
             do_stop_lidar_app().await;
         } else if query["action"] == "start" {
@@ -519,7 +522,7 @@ async fn handle_connect_post(
 }
 
 async fn handle_merge_post(
-    State(state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
@@ -531,6 +534,7 @@ async fn handle_merge_post(
         if query["action"] == "stop" {
             do_stop_lidar_app().await;
         } else if query["action"] == "start" {
+            let state = state.lock().await;
             do_start_lidar_app(args, state.app_path.to_string()).await;
         }
     }
@@ -539,7 +543,7 @@ async fn handle_merge_post(
 }
 
 // async fn handle_replay_post(
-//     State(state): State<AppState>,
+//     State(state): State<Arc<Mutex<AppState>>>,
 //     query: Option<Query<HashMap<String, String>>>,
 //     json: Option<Json<Vec<HashMap<String, Value>>>>,
 // ) -> Json<Value> {
@@ -557,11 +561,11 @@ async fn handle_merge_post(
 //     Json(json!({"status": "ok"}))
 // }
 async fn handle_replay_post(
-    // State(state): State<Arc<AppState>>,
-    State(mut state): State<AppState>,
+    State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
+    let mut state = state.lock().await;
     let mut args = Vec::new();
     if let Some(json) = json {
         args = pick_app_cli_params(json.0);
@@ -590,11 +594,11 @@ async fn handle_replay_post(
             println!("test...state请求");
             state.current_frame += 1;
             println!("测试当前frame {}", state.current_frame);
-            // if state.current_frame == 6 {
-            //     state.current_frame = 6;
-            // } else {
-            //     state.current_frame = state.current_frame + 1;
-            // }
+            if state.current_frame == 6 {
+                state.current_frame = 6;
+            } else {
+                state.current_frame = state.current_frame + 1;
+            }
             return Json(json!({
                 "current_frame":state.current_frame
             }));
@@ -843,7 +847,14 @@ pub async fn start_web_server(
     // }
 
     // do_check_lidar_app().await;
-    
+    let shared_state = Arc::new(Mutex::new(AppState {
+        app_path: Box::leak(app_path.into_boxed_str()),
+        util_path: Box::leak(util_path.into_boxed_str()),
+        loaded_state: false,
+        loaded_frame: 0,
+        current_frame: 0,
+    }));
+
     let app: Router = Router::new()
         .route("/status", get(handle_status_get))
         .route("/connect", post(handle_connect_post))
@@ -855,13 +866,7 @@ pub async fn start_web_server(
         .route("/register", post(handle_register_post))
         .route("/view", post(handle_view_post))
         .route("/merge", post(handle_merge_post))
-        .with_state(AppState {
-            app_path: Box::leak(app_path.into_boxed_str()),
-            util_path: Box::leak(util_path.into_boxed_str()),
-            loaded_state: false,
-            loaded_frame: 0,
-            current_frame: 0,
-        })
+        .with_state(shared_state)
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:15001")

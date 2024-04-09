@@ -37,6 +37,9 @@ static APP_BASE: Lazy<Mutex<Option<AppBase>>> =
 struct AppState {
     app_path: &'static str,
     util_path: &'static str,
+    loaded_state: bool,
+    loaded_frame: u32,
+    current_frame: u32,
 }
 
 fn val_to_string(val: Option<&Value>) -> String {
@@ -554,7 +557,8 @@ async fn handle_merge_post(
 //     Json(json!({"status": "ok"}))
 // }
 async fn handle_replay_post(
-    State(state): State<AppState>,
+    // State(state): State<Arc<AppState>>,
+    State(mut state): State<AppState>,
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
@@ -569,16 +573,45 @@ async fn handle_replay_post(
         } else if query["action"] == "start" {
             println!("test...start请求");
             do_start_lidar_app(args, state.app_path.to_string()).await;
+            return Json(json!({"status": "success"}));
+        } else if query["action"] == "loaded_state" {
+            println!("test...state请求");
+            state.loaded_frame = state.loaded_frame + 10000;
+            if state.loaded_frame == 60000 {
+                state.loaded_state = true;
+            } else {
+                state.loaded_state = false;
+            }
+            return Json(json!({
+                "loaded_state": state.loaded_state,
+                "loaded_frame": state.loaded_frame
+            }));
+        } else if query["action"] == "play_state" {
+            println!("test...state请求");
+            state.current_frame += 1;
+            println!("测试当前frame {}", state.current_frame);
+            // if state.current_frame == 6 {
+            //     state.current_frame = 6;
+            // } else {
+            //     state.current_frame = state.current_frame + 1;
+            // }
+            return Json(json!({
+                "current_frame":state.current_frame
+            }));
         } else if query["action"] == "backword" {
             println!("test...backword请求");
+            let target_frame = state.current_frame + 8;
+            return Json(json!({
+                "target_frame": target_frame
+            }));
         } else if query["action"] == "forword" {
             println!("test...forword请求");
         } else if query["action"] == "skip" {
             println!("test...skip请求");
         } else if query["action"] == "rate" {
             println!("test...rate请求");
-        } else if query["action"] == "autoplay" {
-            println!("test...autoplay请求");
+        } else if query["action"] == "loopplay" {
+            println!("test...loopplay请求");
         }
     }
     Json(json!({"status": "ok"}))
@@ -810,7 +843,7 @@ pub async fn start_web_server(
     // }
 
     // do_check_lidar_app().await;
-
+    
     let app: Router = Router::new()
         .route("/status", get(handle_status_get))
         .route("/connect", post(handle_connect_post))
@@ -825,6 +858,9 @@ pub async fn start_web_server(
         .with_state(AppState {
             app_path: Box::leak(app_path.into_boxed_str()),
             util_path: Box::leak(util_path.into_boxed_str()),
+            loaded_state: false,
+            loaded_frame: 0,
+            current_frame: 0,
         })
         .layer(CorsLayer::permissive());
 

@@ -562,8 +562,24 @@ async fn handle_replay_post(
     query: Option<Query<HashMap<String, String>>>,
     json: Option<Json<Vec<HashMap<String, Value>>>>,
 ) -> Json<Value> {
+    let mut rate = 0;
+    let mut state = state.lock().await;
     let mut args = Vec::new();
     if let Some(json) = json {
+        if let Some(first_item) = json.0.first() {
+            if let Some(val) = first_item.get("play_rate") {
+                match val.as_u64() {
+                    Some(val) => {
+                        rate = val;
+                    }
+                    None => {
+                        rate = 0;
+                    }
+                }
+                println!("更新play_rate: {:?}", rate);
+            }
+        }
+        // println!("test...参数{:?}",json.0.get("currentTime"));
         args = pick_app_cli_params(json.0);
     }
     if let Some(query) = query {
@@ -588,24 +604,24 @@ async fn handle_replay_post(
             }));
         } else if query["action"] == "play_state" {
             println!("test...state请求");
-            state.current_frame += 1;
+            if state.current_frame == 6 {
+                state.current_frame = 6;
+            } else {
+                state.current_frame = state.current_frame + 1;
+            }
             println!("测试当前frame {}", state.current_frame);
-            // if state.current_frame == 6 {
-            //     state.current_frame = 6;
-            // } else {
-            //     state.current_frame = state.current_frame + 1;
-            // }
             return Json(json!({
                 "current_frame":state.current_frame
             }));
         } else if query["action"] == "backword" {
             println!("test...backword请求");
-            let target_frame = state.current_frame + 8;
+        } else if query["action"] == "forword" {
+            println!("test...forword请求");
+            let target_frame = state.current_frame + rate as u32;
+            println!("目标帧target_frame: {}", target_frame);
             return Json(json!({
                 "target_frame": target_frame
             }));
-        } else if query["action"] == "forword" {
-            println!("test...forword请求");
         } else if query["action"] == "skip" {
             println!("test...skip请求");
         } else if query["action"] == "rate" {

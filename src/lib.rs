@@ -613,11 +613,6 @@ async fn handle_replay_post(
                 state.current_frame = state.current_frame + 1;
             }
             println!("测试当前frame {}", state.current_frame);
-            if state.current_frame == 6 {
-                state.current_frame = 6;
-            } else {
-                state.current_frame = state.current_frame + 1;
-            }
             return Json(json!({
                 "current_frame":state.current_frame
             }));

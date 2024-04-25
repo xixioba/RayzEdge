@@ -452,6 +452,46 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
     args
 }
 
+async fn handle_chart_data_post(
+    query: Option<Query<HashMap<String, String>>>,
+    json: Option<Json<HashMap<String, Value>>>,
+) -> Json<Value> {
+    if let Some(query) = query {
+        if query["action"] == "chart_data_get" {
+            let time_labels_data: Vec<String> = vec![
+                "4-20".to_string(),
+                "4-21".to_string(),
+                "4-22".to_string(),
+                "4-23".to_string(),
+                "4-24".to_string(),
+                "4-25".to_string(),
+                "4-26".to_string(),
+            ];
+            // let temperature_data: Vec<u64> = vec![69, 59, 80, 81, 56, 55, 40];
+            let mut rng = rand::thread_rng();
+
+            let temperature_data: Vec<u64> = (0..7).map(|_| rng.gen_range(40..=82)).collect();
+            let spin_rate_data: Vec<u64> = (0..7).map(|_| rng.gen_range(19..=90)).collect();
+            let high_voltage: Vec<u64> = (0..7).map(|_| rng.gen_range(18..=80)).collect();
+            let low_voltage: Vec<u64> = (0..7).map(|_| rng.gen_range(48..=96)).collect();
+            return Json(json!({
+                "time_labels_data": time_labels_data,
+                "temperature_data": temperature_data,
+                "spin_rate_data": spin_rate_data,
+                "high_voltage": high_voltage,
+                "low_voltage": low_voltage
+
+            }));
+        } else {
+            println!("chart_data_get_null!!!");
+            println!("{:?}", json)
+        }
+    }
+
+    println!("handle_chart_data_get!!!");
+    Json(json!({"status": "ok"}))
+}
+
 async fn handle_status_get(
     // State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
@@ -625,7 +665,7 @@ async fn handle_replay_post(
                 return Json(json!({
                     "target_frame": 0
                 }));
-            } else if target_frame > 0{
+            } else if target_frame > 0 {
                 state.current_frame = target_frame;
             }
             println!("后退目标帧target_frame: {}", target_frame);
@@ -893,6 +933,7 @@ pub async fn start_web_server(
     }));
 
     let app: Router = Router::new()
+        .route("/chart", post(handle_chart_data_post))
         .route("/status", get(handle_status_get))
         .route("/connect", post(handle_connect_post))
         .route("/record", post(handle_connect_post))

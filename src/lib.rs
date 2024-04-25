@@ -40,7 +40,7 @@ struct AppState {
     util_path: &'static str,
     loaded_state: bool,
     loaded_frame: u32,
-    current_frame: u32,
+    current_frame: i32,
 }
 
 fn val_to_string(val: Option<&Value>) -> String {
@@ -589,6 +589,7 @@ async fn handle_replay_post(
         if query["action"] == "stop" {
             println!("test...stop请求");
             do_stop_lidar_app().await;
+            return Json(json!({"status": "success"}));
         } else if query["action"] == "start" {
             println!("test...start请求");
             do_start_lidar_app(args, state.app_path.to_string()).await;
@@ -607,8 +608,8 @@ async fn handle_replay_post(
             }));
         } else if query["action"] == "play_state" {
             println!("test...state请求");
-            if state.current_frame == 6 {
-                state.current_frame = 6;
+            if state.current_frame == 60 {
+                state.current_frame = 60;
             } else {
                 state.current_frame = state.current_frame + 1;
             }
@@ -618,12 +619,33 @@ async fn handle_replay_post(
             }));
         } else if query["action"] == "backword" {
             println!("test...backword请求");
-        } else if query["action"] == "forword" {
-            println!("test...forword请求");
-            let target_frame = state.current_frame + rate as u32;
-            println!("目标帧target_frame: {}", target_frame);
+            let target_frame = state.current_frame - rate as i32;
+            if target_frame <= 0 {
+                state.current_frame = 0;
+                return Json(json!({
+                    "target_frame": 0
+                }));
+            } else if target_frame > 0{
+                state.current_frame = target_frame;
+            }
+            println!("后退目标帧target_frame: {}", target_frame);
             return Json(json!({
                 "target_frame": target_frame
+            }));
+        } else if query["action"] == "forword" {
+            println!("test...forword请求");
+            let target_frame = state.current_frame + rate as i32;
+            if target_frame >= 60 {
+                state.current_frame = 60;
+                return Json(json!({
+                    "target_frame": 60
+                }));
+            } else if target_frame < 60 {
+                state.current_frame = target_frame;
+            }
+            println!("前进目标帧target_frame: {}", target_frame);
+            return Json(json!({
+                "target_frame": target_frame,
             }));
         } else if query["action"] == "skip" {
             println!("test...skip请求");

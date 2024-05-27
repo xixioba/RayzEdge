@@ -779,9 +779,9 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
     }
 
     // 提供debug信息
-    if !args.contains(&"--debug".to_owned()) {
-        args.push("--debug".to_owned());
-    }
+    // if !args.contains(&"--debug".to_owned()) {
+    //     args.push("--debug".to_owned());
+    // }
 
     // 回放默认循环播放
     if !args.contains(&"-l".to_owned()) && !args.contains(&"://".to_owned()) {

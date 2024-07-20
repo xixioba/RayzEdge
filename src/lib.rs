@@ -84,6 +84,21 @@ fn pick_util_cli_params(
             }
             _ => {}
         },
+        "sn" => match action.as_str() {
+            "get" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("get".to_owned());
+                args.push("sn".to_owned());
+            }
+            "set" => {
+                args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
+                args.push("set".to_owned());
+                args.push("sn".to_owned());
+            }
+            _ => {}
+        },
         "reg" => match action.as_str() {
             "get" => {
                 args.push(val_to_string(params.get("ipv4")));
@@ -144,6 +159,7 @@ async fn handle_control_post(
         if query["action"] == "get" {
             if let Some(json) = json {
                 args = pick_util_cli_params(json.0, "get".to_string(), group);
+                // println!("测试args: {:?}", args);
             }
             return do_start_lidar_util(args, state.util_path.to_string()).await;
         } else if query["action"] == "set" {
@@ -452,94 +468,6 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
     args
 }
 
-async fn handle_chart_data_post(
-    query: Option<Query<HashMap<String, String>>>,
-    json: Option<Json<HashMap<String, Value>>>,
-) -> Json<Value> {
-    if let Some(query) = query {
-        if query["action"] == "chart_data_get" {
-            let time_labels_data: Vec<String> = vec![
-                "4-20".to_string(),
-                "4-21".to_string(),
-                "4-22".to_string(),
-                "4-23".to_string(),
-                "4-24".to_string(),
-                "4-25".to_string(),
-                "4-26".to_string(),
-            ];
-            // let temperature_data: Vec<u64> = vec![69, 59, 80, 81, 56, 55, 40];
-            let mut rng = rand::thread_rng();
-
-            let temperature_data: Vec<u64> = (0..7).map(|_| rng.gen_range(40..=82)).collect();
-            let spin_rate_data: Vec<u64> = (0..7).map(|_| rng.gen_range(19..=90)).collect();
-            let high_voltage: Vec<u64> = (0..7).map(|_| rng.gen_range(18..=80)).collect();
-            let low_voltage: Vec<u64> = (0..7).map(|_| rng.gen_range(48..=96)).collect();
-            return Json(json!({
-                "time_labels_data": time_labels_data,
-                "temperature_data": temperature_data,
-                "spin_rate_data": spin_rate_data,
-                "high_voltage": high_voltage,
-                "low_voltage": low_voltage
-
-            }));
-        } else {
-            println!("chart_data_get_null!!!");
-            println!("{:?}", json)
-        }
-    }
-
-    println!("handle_chart_data_get!!!");
-    Json(json!({"status": "ok"}))
-}
-
-async fn handle_status_get(
-    // State(state): State<Arc<Mutex<AppState>>>,
-    query: Option<Query<HashMap<String, String>>>,
-    // json: Option<Json<Vec<HashMap<String, Value>>>>,
-) -> Json<Value> {
-    // let args: Vec<String> = Vec::new();
-    // if let Some(json) = json {
-    //     args = pick_app_cli_params(json.0);
-    // }
-    if let Some(query) = query {
-        if query["action"] == "info_get" {
-            let spin_rate = "200pm".to_string();
-            let ptp = "500ns".to_string();
-
-            let customer = "RedLeaf".to_string();
-            let model = "H260".to_string();
-            let sn = "AT000880BBBG".to_string();
-            let mac = "00:0C:29:8D:3D:3D".to_string();
-            let software = "3.20.20".to_string();
-            let firmware = "2.88a528".to_string();
-            let rpu = "3.20.016".to_string();
-            let golden = "414.0a21".to_string();
-            let hardware = "B1".to_string();
-            let phy = "Slave1".to_string();
-
-            return Json(json!({
-                "spin_rate": spin_rate,
-                "ptp": ptp,
-                "customer": customer,
-                "model": model,
-                "sn": sn,
-                "mac": mac,
-                "software": software,
-                "firmware": firmware,
-                "rpu": rpu,
-                "golden": golden,
-                "hardware": hardware,
-                "phy": phy
-            }));
-        } else {
-            println!("status_get_null!!!");
-        }
-    }
-
-    println!("handle_status_get!!!");
-    Json(json!({"status": "ok"}))
-}
-
 async fn handle_connect_post(
     State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
@@ -582,24 +510,6 @@ async fn handle_merge_post(
     Json(json!({"status": "ok"}))
 }
 
-// async fn handle_replay_post(
-//     State(state): State<Arc<Mutex<AppState>>>,
-//     query: Option<Query<HashMap<String, String>>>,
-//     json: Option<Json<Vec<HashMap<String, Value>>>>,
-// ) -> Json<Value> {
-//     let mut args = Vec::new();
-//     if let Some(json) = json {
-//         args = pick_app_cli_params(json.0);
-//     }
-//     if let Some(query) = query {
-//         if query["action"] == "stop" {
-//             do_stop_lidar_app().await;
-//         } else if query["action"] == "start" {
-//             do_start_lidar_app(args, state.app_path.to_string()).await;
-//         }
-//     }
-//     Json(json!({"status": "ok"}))
-// }
 async fn handle_replay_post(
     State(state): State<Arc<Mutex<AppState>>>,
     query: Option<Query<HashMap<String, String>>>,
@@ -933,8 +843,6 @@ pub async fn start_web_server(
     }));
 
     let app: Router = Router::new()
-        .route("/chart", post(handle_chart_data_post))
-        .route("/status", get(handle_status_get))
         .route("/connect", post(handle_connect_post))
         .route("/record", post(handle_connect_post))
         .route("/replay", post(handle_replay_post))

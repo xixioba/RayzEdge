@@ -819,6 +819,7 @@ pub async fn start_web_server(
     mut stop_rx: tokio::sync::broadcast::Receiver<()>,
     app_path: String,
     util_path: String,
+    tcp_port: u16,
 ) {
     println!("start http server!");
 
@@ -855,9 +856,8 @@ pub async fn start_web_server(
         .with_state(shared_state)
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:15001")
-        .await
-        .unwrap();
+    let addr = format!("0.0.0.0:{}", tcp_port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
 
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {

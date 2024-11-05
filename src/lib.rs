@@ -65,6 +65,7 @@ fn pick_util_cli_params(
         "net" => match action.as_str() {
             "get" => {
                 args.push(val_to_string(params.get("ipv4")));
+                args.push("debug".to_owned());
                 args.push("get".to_owned());
                 args.push("all".to_owned());
             }

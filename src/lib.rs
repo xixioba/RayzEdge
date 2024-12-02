@@ -432,13 +432,10 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
                     args.push("--model".to_owned());
                     if let Some(val) = val.as_str() {
                         match val {
-                            "HX-Ultra" => args.push("hx".to_owned()),
-                            "M2U2" => args.push("m2u2".to_owned()),
-                            "H260" => args.push("h2a+".to_owned()),
-                            "H260R" => args.push("h2a".to_owned()),
-                            "W100" => args.push("m2w".to_owned()),
-                            "W100P" => args.push("m2w+".to_owned()),
-                            "V80" => args.push("m2v".to_owned()),
+                            "HX" => args.push("hx".to_owned()),
+                            "H260" => args.push("h260".to_owned()),
+                            "H260-MINI" => args.push("h260m".to_owned()),
+                            "W100" => args.push("w100".to_owned()),
                             _ => args.push(val.to_owned()),
                         }
                     }

@@ -1,8 +1,8 @@
 use axum::routing::Router;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+// use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use axum::{
-    extract::{Json, Path, Query, State},
+    extract::{Json, Query, State},
     routing::{get, post},
 };
 use once_cell::sync::Lazy;
@@ -22,16 +22,16 @@ use rand::{self, Rng};
 static APP_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
 static UTIL_PROCESS: Lazy<Mutex<Option<tokio::process::Child>>> = Lazy::new(|| Mutex::new(None));
 
-#[derive(Debug)]
-struct AppBase {
-    app_path: String,
-    app_process_child: Option<tokio::process::Child>,
-    util_path: String,
-    util_process_child: Option<tokio::process::Child>,
-}
+// #[derive(Debug)]
+// struct AppBase {
+//     app_path: String,
+//     app_process_child: Option<tokio::process::Child>,
+//     util_path: String,
+//     util_process_child: Option<tokio::process::Child>,
+// }
 
-static APP_BASE: Lazy<Mutex<Option<AppBase>>> =
-    Lazy::new(|| tokio::task::block_in_place(|| Mutex::new(None)));
+// static APP_BASE: Lazy<Mutex<Option<AppBase>>> =
+//     Lazy::new(|| tokio::task::block_in_place(|| Mutex::new(None)));
 
 // 用来在不同handler之间传递和共享状态
 #[derive(Debug, Copy, Clone)]
@@ -224,7 +224,7 @@ fn random_date(start_date: DateTime<Local>, end_date: DateTime<Local>) -> DateTi
 fn generate_mock_data(count: usize) -> Vec<MockData> {
     let mut data = Vec::new();
     let types = ["error", "warn", "info"];
-    let start_date = Local.ymd(2020, 1, 1).and_hms(0, 0, 0);
+    let start_date = Local.with_ymd_and_hms(2020, 1, 1, 0, 0, 0).unwrap();
     let end_date = Local::now();
     for i in 0..count {
         let type_index = rand::thread_rng().gen_range(0..types.len());

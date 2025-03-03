@@ -434,6 +434,12 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
                         match val {
                             "HX" => args.push("hx".to_owned()),
                             "H260" => args.push("h260".to_owned()),
+                            "HUT_1_90" => args.push("h260_1_90".to_owned()),
+                            "HUT_5_90" => args.push("h260_5_90".to_owned()),
+                            "HUT_10_90" => args.push("h260_10_90".to_owned()),
+                            "HUT_16_90" => args.push("h260_16_90".to_owned()),
+                            "HUT_160_90" => args.push("h260_160_90".to_owned()),
+                            "HUT_1_60" => args.push("h260_1_60".to_owned()),
                             "H260-MINI" => args.push("h260m".to_owned()),
                             "W100" => args.push("w100".to_owned()),
                             _ => args.push(val.to_owned()),

@@ -475,7 +475,7 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
         }
     }
     args.push("--weather".to_owned());
-    args.push("cloudy".to_owned());
+    args.push("sunny".to_owned());
     args.push("--no-imu".to_owned());
     args.push("--off".to_owned());
     args

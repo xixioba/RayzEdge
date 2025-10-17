@@ -446,6 +446,7 @@ fn pick_app_cli_params(params: Vec<HashMap<String, Value>>) -> Vec<String> {
                             "W100" => args.push("w100".to_owned()),
                             "F30" => args.push("f30".to_owned()),
                             "TH-S011" => args.push("f30".to_owned()),
+                            "F360" => args.push("f360".to_owned()),
                             _ => args.push(val.to_owned()),
                         }
                     }

@@ -771,8 +771,7 @@ async fn do_start_lidar_app(mut args: Vec<String>, app_path: String) -> bool {
 }
 
 async fn do_start_lidar_util(args: Vec<String>, util_path: String) -> Json<Value> {
-    // check if args contain "" invalid param
-    if args.len() == 0 || args.contains(&"".to_string()) {
+    if args.len() == 0 {
         println!("invalid param! {:?}", args);
         return Json(json!({"status": "invalid param","Ret":"Failed"}));
     }
@@ -808,7 +807,7 @@ async fn do_start_lidar_util(args: Vec<String>, util_path: String) -> Json<Value
                     ) {
                         if let Some(caps) = re.captures(&line) {
                             println!(
-                                "util filter: {} {} {} {}",
+                                "{} {} {} {}",
                                 &caps["time"], &caps["level"], &caps["key"], &caps["val"]
                             );
                             json_obj[&caps["key"]] = json!(caps["val"]);
